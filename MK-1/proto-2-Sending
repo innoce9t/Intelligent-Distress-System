@@ -1,0 +1,87 @@
+#include <OBD.h>
+#include <OneSheeld.h>
+#include <Wire.h>
+
+//Prototype1
+int RPM;
+int Speed;
+boolean carstarted = false;
+COBDI2C obd;
+
+//Prototype 2
+char latitude[30], longitude[30], message [100];
+String number = "07463376823";
+
+//Prototype 3
+unsigned long currentTime = 0 , lastTimeTaken = 0;
+
+void setup() {
+OneSheeld.begin();
+obd.begin();
+while (!obd.init());
+carstarted = true;
+}
+
+void loop() {
+  
+if (obd.init())
+  { 
+    obd.read(PID_RPM,RPM);
+    obd.read(PID_SPEED,Speed);
+    Terminal.print("RPM = ");
+    Terminal.print(RPM);
+    Terminal.print(" , ");
+    Terminal.print("Speed = ");
+    Terminal.print(Speed);
+    Terminal.println("");
+      }
+      
+if (!obd.init() && carstarted)
+ { dtostrf(GPS.getLatitude(),3,6,latitude);
+   dtostrf(GPS.getLongitude(),3,6,longitude);
+   strcat (message, "Car crashed, need help at ");
+   strcat (message, "http://maps.google.com/maps?q=");
+   strcat (message, latitude);
+   strcat (message, ",");
+   strcat (message, longitude);
+   TextToSpeech.say("Would you like me to send a distress signal");
+   VoiceRecognition.start();
+   
+   if(!lastTimeTaken)
+   {
+     lastTimeTaken = millis ();
+     currentTime = lastTimeTaken;
+     }
+   if (VoiceRecognition.isNewCommandReceived() || currentTime - lastTimeTaken > 10000)
+   {
+     
+     if (!strcmp("yes",VoiceRecognition.getLastCommand()))
+         {
+           SMS.send("07463376823", message);
+           // Email.send("anawazis@student.bradford.ac.uk","Car crashed",message);
+           Terminal.print("Distress Signal Sent");
+
+
+
+             }
+             
+     else if (!strcmp("no",VoiceRecognition.getLastCommand()))
+         {
+             TextToSpeech.say("Distress Siganl cancelled");
+             carstarted = false;
+             lastTimeTaken = 0;
+             currentTime = 0;
+             }
+     else 
+       {           
+         SMS.send("07463376823", message);
+        // Email.send("anawazis@student.bradford.ac.uk","Car crashed",message);
+           Terminal.print("Distress Signal Sent");
+         }
+       }
+ }
+         
+         
+delay (200);
+ 
+}
